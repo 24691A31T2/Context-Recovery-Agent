@@ -1,8 +1,7 @@
 import json
 import os
 
-FILE_PATH = "data/context.json"
-
+FILE_PATH = "data/projects.json"
 
 def load_all_projects():
     """
