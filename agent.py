@@ -2,12 +2,19 @@ import os
 from dotenv import load_dotenv
 from google import genai
 
+# ==========================================
+# LOAD ENVIRONMENT
+# ==========================================
+
 load_dotenv()
 
 client = genai.Client(
     api_key=os.getenv("GOOGLE_API_KEY")
 )
 
+# ==========================================
+# GENERATE PROJECT PLAN
+# ==========================================
 
 def generate_project_plan(project_name, description):
 
@@ -20,27 +27,18 @@ Project Name:
 Project Description:
 {description}
 
-Generate ONLY a list of project tasks.
+Generate a project plan.
 
 Rules:
-- Use the given project name.
-- Do NOT change the project name.
-- Do NOT generate another project.
-- Return only task names.
+- Generate a maximum of 20 important tasks.
+- Do not generate more than 20 tasks.
+- Include only major development phases.
+- Do not split one feature into many small subtasks.
+- Return ONLY task names.
 - One task per line.
 - No numbering.
-- No explanation.
-- No markdown.
-
-Example:
-
-Requirement Analysis
-Project Planning
-Database Design
-Frontend Development
-Backend Development
-Testing
-Deployment
+- No explanations.
+- Tasks must be specific to the given project.
 """
 
     response = client.models.generate_content(
@@ -48,8 +46,21 @@ Deployment
         contents=prompt,
     )
 
-    return response.text.strip()
+    tasks = [
+        task.strip()
+        for task in response.text.strip().split("\n")
+        if task.strip()
+    ]
 
+    # Maximum 20 tasks
+    tasks = tasks[:20]
+
+    return "\n".join(tasks)
+
+
+# ==========================================
+# GENERATE SUMMARY
+# ==========================================
 
 def generate_summary(project_name, completed_tasks, pending_tasks):
 
@@ -67,11 +78,11 @@ Pending Tasks:
 
 Generate:
 
-1. A short summary.
+1. A short project summary.
 2. Current progress.
 3. Next recommended task.
 
-Keep the answer short and clear.
+Keep the response professional and under 150 words.
 """
 
     response = client.models.generate_content(
@@ -82,18 +93,60 @@ Keep the answer short and clear.
     return response.text.strip()
 
 
+# ==========================================
+# SUGGEST NEXT TASK
+# ==========================================
+
 def suggest_next_task(project_name, pending_tasks):
 
     prompt = f"""
-Project:
+You are a project planning assistant.
+
+Project Name:
 {project_name}
 
 Pending Tasks:
 {pending_tasks}
 
-Suggest ONLY the next highest priority task.
+Suggest ONLY the next highest-priority task.
 
-Keep the answer in one sentence.
+Return exactly one sentence.
+"""
+
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=prompt,
+    )
+
+    return response.text.strip()
+
+
+# ==========================================
+# AI ASSISTANT
+# ==========================================
+
+def ask_ai(project_name, completed_tasks, pending_tasks, question):
+
+    prompt = f"""
+You are an intelligent AI Project Assistant.
+
+Project Name:
+{project_name}
+
+Completed Tasks:
+{completed_tasks}
+
+Pending Tasks:
+{pending_tasks}
+
+User Question:
+{question}
+
+Instructions:
+- Answer only based on the project details.
+- Keep the answer short.
+- Be practical.
+- Do not add unnecessary explanations.
 """
 
     response = client.models.generate_content(
